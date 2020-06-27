@@ -1,6 +1,6 @@
 {
   "name": "wroclaw-transport-data-provider",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "APIs wrapper to provide public transportation data in Wroclaw, Poland",
   "main": "index.js",
   "scripts": {
