@@ -46,8 +46,10 @@ const getMpkData = (posts) => {
     positions = JSON.parse(responses[0].data.toString());
     postInfos = responses.slice(1).map((response) => JSON.parse(response.data.toString()));
     for (const post of postInfos) {
-      for (const cruise of post) {
-        console.log(`Linia ${cruise.l}, rozkład: ${cruise.t}`)
+      for (const course of post) {
+        const position = positions.find((position) => position?.course === course.c);
+
+        console.log(`Linia ${course.l}, rozkład: ${course.t}, opoznienie: ${position.delay}`)
       }      
     }
   });
