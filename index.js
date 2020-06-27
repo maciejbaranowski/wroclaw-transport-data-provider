@@ -4,27 +4,13 @@ const urllib = require("urllib");
 const moment = require("moment");
 moment.locale("pl");
 
-const config = {
-  stations: [15121, 15153],
-  posts: [
-    {
-      name: "Kleczkowska Tramwaj",
-      id: 10606,
-    },
-    {
-      name: "Kleczkowska Autobus",
-      id: 10706,
-    }
-  ]
-};
-
 const getBikeData = (stations) => {
   return new Promise((resolve, reject) => {
     const output = [];
     const apiCall = Axios.get("https://wroclawskirower.pl/mapa-stacji/", {});
     apiCall.then((response) => {
       const htmlDocument = htmlParser.parse(response.data);
-      for (const station of config.stations) {
+      for (const station of stations) {
         const stationData = htmlDocument
           .querySelector(`.place-number-${station}`)
           .querySelectorAll("td");
@@ -83,21 +69,6 @@ const getMpkData = (posts) => {
     }).catch(reject);
   });
 };
-
-getBikeData(config.stations).then(console.log).catch(console.log);
-getMpkData(config.posts)
-  .then((postInfos) =>
-    postInfos.forEach((postInfo) => {
-      console.log(`Przystanek ${postInfo.name}`);
-      postInfo.data.forEach((i) =>
-        console.log(
-          `Linia ${i.line}, rozkład: ${i.timetableTime}, opoznienie: ${i.delay}, czas rzeczywisty: ${i.realTime} (${i.realTimeDiff})`
-        )
-      );
-    })
-  )
-  .catch(console.log);
-
 
 module.exports = {
      getBikeData,

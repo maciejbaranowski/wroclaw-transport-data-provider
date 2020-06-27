@@ -4,7 +4,7 @@
   "description": "APIs wrapper to provide public transportation data in Wroclaw, Poland",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node example.js"
   },
   "author": "Maciej Baranowski",
   "license": "ISC",
