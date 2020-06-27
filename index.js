@@ -1,65 +1,105 @@
 const Axios = require("axios");
 const htmlParser = require("node-html-parser");
 const urllib = require("urllib");
+const moment = require("moment");
+moment.locale("pl");
 
 const config = {
   stations: [15121, 15153],
   posts: [
     {
-      name: "Kleczkowska T",
+      name: "Kleczkowska Tramwaj",
       id: 10606,
     },
     {
-      name: "Kleczkowska A",
+      name: "Kleczkowska Autobus",
       id: 10706,
-    },
+    }
   ]
 };
 
 const getBikeData = (stations) => {
-  const apiCall = Axios.get("https://wroclawskirower.pl/mapa-stacji/", {});
-  apiCall.then((response) => {
-    const htmlDocument = htmlParser.parse(response.data);
-    for (const station of config.stations) {
-      const stationData = htmlDocument
-        .querySelector(`.place-number-${station}`)
-        .querySelectorAll("td");
-      const name = stationData[1].rawText;
-      const numberOfBikes = stationData[2].rawText;
-      console.log(`${name}: ${numberOfBikes}`);
-    }
+  return new Promise((resolve, reject) => {
+    const output = [];
+    const apiCall = Axios.get("https://wroclawskirower.pl/mapa-stacji/", {});
+    apiCall.then((response) => {
+      const htmlDocument = htmlParser.parse(response.data);
+      for (const station of config.stations) {
+        const stationData = htmlDocument
+          .querySelector(`.place-number-${station}`)
+          .querySelectorAll("td");
+        const name = stationData[1].rawText;
+        const numberOfBikes = stationData[2].rawText;
+        output.push({name, numberOfBikes});
+      }
+      resolve(output);
+    }).catch(reject);
   });
 };
 
 const getMpkData = (posts) => {
-  const queryMpkApi = (params) => {
-    return urllib.request(`https://62.233.178.84:8088/mobile?${params}`, {
-      digestAuth: `android-mpk:g5crehAfUCh4Wust`,
-      rejectUnauthorized: false
-    });
-  };
-  const apiCalls = Promise.all([
-    queryMpkApi(`function=getPositions`),
-    ...posts.map((post) => queryMpkApi(`function=getPostInfo&symbol=${post.id}`))
-  ]);  
-  apiCalls.then((responses) => {
-    positions = JSON.parse(responses[0].data.toString());
-    postInfos = responses.slice(1).map((response) => JSON.parse(response.data.toString()));
-    for (const post of postInfos) {
-      for (const course of post) {
-        const position = positions.find((position) => position?.course === course.c);
-
-        console.log(`Linia ${course.l}, rozkład: ${course.t}, opoznienie: ${position.delay}`)
-      }      
-    }
+  return new Promise((resolve, reject) => {
+    const output = [];
+    const numberOfCarsPerPost = 5;
+    const queryMpkApi = (params) => {
+      return urllib.request(`https://62.233.178.84:8088/mobile?${params}`, {
+        digestAuth: `android-mpk:g5crehAfUCh4Wust`, //public credentials as used by official app
+        rejectUnauthorized: false
+      });
+    };
+    const apiCalls = Promise.all([
+      queryMpkApi(`function=getPositions`),
+      ...posts.map((post) => queryMpkApi(`function=getPostInfo&symbol=${post.id}`))
+    ]);  
+    apiCalls.then((responses) => {
+      positions = JSON.parse(responses[0].data.toString());
+      postInfos = responses.slice(1).map((response) => JSON.parse(response.data.toString()));
+      for (const [postIndex, post] of postInfos.entries()) {
+        const postOutput = {"name": posts[postIndex].name, "data": []}
+        for (const course of post.slice(0, numberOfCarsPerPost)) {
+          const position = positions.find((position) => position.course == course.c);
+          const timetableTime = moment(course.t);
+          const realTime = timetableTime;
+          let delay = "brak danych";
+          if (position) {
+            const delayInSeconds = position.delay / 1000;
+            realTime.add(delayInSeconds, 'seconds');
+            if (delayInSeconds < 100) 
+              delay = delayInSeconds + " sek";
+            else
+              delay = Math.floor(delayInSeconds / 60) + " min";
+          }
+          postOutput.data.push({
+            line: course.l,
+            timetableTime: timetableTime.format('LT'),
+            delay: delay,
+            realTime: realTime.format('LTS'),
+            realTimeDiff: realTime.fromNow()
+          })
+        }
+        output.push(postOutput);      
+      }
+      resolve(output);
+    }).catch(reject);
   });
 };
 
-getBikeData(config.stations);
-getMpkData(config.posts);
+getBikeData(config.stations).then(console.log).catch(console.log);
+getMpkData(config.posts)
+  .then((postInfos) =>
+    postInfos.forEach((postInfo) => {
+      console.log(`Przystanek ${postInfo.name}`);
+      postInfo.data.forEach((i) =>
+        console.log(
+          `Linia ${i.line}, rozkład: ${i.timetableTime}, opoznienie: ${i.delay}, czas rzeczywisty: ${i.realTime} (${i.realTimeDiff})`
+        )
+      );
+    })
+  )
+  .catch(console.log);
 
 
-// module.exports = {
-//     getBikeData,
-//     getMpkData
-// }
+module.exports = {
+     getBikeData,
+     getMpkData
+};
