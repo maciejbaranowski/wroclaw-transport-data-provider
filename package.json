@@ -9,7 +9,7 @@
   "author": "Maciej Baranowski",
   "license": "ISC",
   "dependencies": {
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "moment": "^2.27.0",
     "node-html-parser": "^1.2.20",
     "urllib": "^2.36.1"
